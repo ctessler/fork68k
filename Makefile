@@ -44,7 +44,7 @@ ifeq ($(compiler),)
   else ifeq ($(platform),osx)
     compiler := gcc-mp-4.7
   else
-    compiler := gcc-4.7
+    compiler := gcc
   endif
 endif
 
@@ -84,8 +84,15 @@ obj/68kexception.o: 68k/exception.cpp
 
 
 objects := $(patsubst %,obj/%.o,$(objects))
+$(objects): | obj
 
-build: $(objects)
+obj:
+	mkdir obj
+
+out:
+	mkdir out
+
+build: $(objects) | out
 	$(cpp) -o out/$(name) $(objects) $(link)
 
 

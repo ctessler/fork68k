@@ -326,7 +326,8 @@ void Tester_68k::check(string ident) {
     if (testCounter++ > 100) {
         testCounter = 0;
         cout << endl;
-        system("PAUSE");
+	string nothing;
+	cin >> nothing;
     }
 }
 

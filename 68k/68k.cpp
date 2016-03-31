@@ -226,7 +226,7 @@ void Core_68k::build_optable() {
 	}
     /* MULU, MULS, DIVU, DIVS */
     for (j = 0; j <= 0x3f; j++) {			/* EA */
-        if (!CheckEA(j, "101111111111")) continue;
+        if (!CheckEA(j, (char *)"101111111111")) continue;
 		for (i = 0; i <= 7; i++) {       /* register */
 			opcodes[(i << 9) + j + 0xc0c0] = &Core_68k::op_mulu;
 			opcodes[(i << 9) + j + 0xc1c0] = &Core_68k::op_muls;
