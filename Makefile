@@ -3,7 +3,7 @@ DEBUG ?= 0
 name := portable68k
 
 
-objects := 68k 68kexception main results tester
+objects := 68k 68kexception main results tester 
 
 INC := . lib/
 INC_PARAM = $(foreach d, $(INC), -I$d)
@@ -78,6 +78,8 @@ all: build;
 obj/main.o:	main.cpp
 obj/results.o:	results.cpp
 obj/tester.o:	tester.cpp
+obj/step68k.o:	step68k.cpp
+obj/ctsim.o:	ctsim.cpp
 
 obj/68k.o: 68k/68k.cpp
 obj/68kexception.o: 68k/exception.cpp
@@ -94,7 +96,8 @@ out:
 
 build: $(objects) | out
 	$(cpp) -o out/$(name) $(objects) $(link)
-
+	$(cpp) -o out/step68k obj/step68k.o obj/68k.o obj/68kexception.o \
+	    obj/results.o obj/ctsim.o $(link)
 
 clean:
 	-@$(call delete,obj/*.o)
