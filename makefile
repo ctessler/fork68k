@@ -12,8 +12,9 @@ obj/68kexception.o:	68k/exception.cpp
 obj/results.o:	results.cpp
 obj/step68k.o:	step68k.cpp step68k.h
 obj/ctsim.o:	ctsim.cpp
+obj/pipeline.o: 68k/pipeline.cpp
 
-deps := ctsim step68k 68k 68kexception results
+deps := ctsim step68k 68k 68kexception results pipeline
 objs := $(patsubst %,obj/%.o,$(deps))
 
 out/ctsim: $(objs)

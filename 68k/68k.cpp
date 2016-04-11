@@ -3,10 +3,15 @@
 #include "rotate.t.h"
 #include "shift.t.h"
 #include "opcodes.t.h"
+#include "pipeline.h"
 #include <cstdlib>
+#include <iostream>
+using namespace std;
+
 
 void Core_68k::process() { //execute next opcode
-    if ( doubleFault ) {
+	cout << "In process()" << endl;
+  if ( doubleFault ) {
         cpuHalted();
         sync(4);
         return; //cpu can recover from reset only
@@ -21,9 +26,12 @@ void Core_68k::process() { //execute next opcode
         }
         trace = reg_s.trace;
         incrementPc();
+	cout << "Test" << endl;
         logInstruction(reg_ird, true);
 
         (this->*opcodes[ reg_ird ])(reg_ird);
+	cout << "Current PC: " << reg_pc << " pipelined cycles: " << std::dec
+	     << pipe.getCycleCount() << " to clear: " << pipe.remaining() << endl;
     } catch(CpuException) {
         //bus or address error, leave opcode or exception handler
         status_code.reset();

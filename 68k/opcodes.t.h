@@ -625,12 +625,26 @@ template<u8 size> void Core_68k::op_ori(u16 opcode) {
     writeEA(size, data, true);
 }
 
+
+/**
+ * FETCH - 3
+ * DECODE - 0
+ * EXECUTE - 0
+ * WRITE - 3
+ */
 void Core_68k::op_moveq(u16 opcode) {
 	u8 regPos = (opcode >> 9) & 7;
-    u32 data = (i32)(i8)(opcode & 0xFF);
-    reg_d[regPos] = data;
-    setFlags(flag_logical, SizeLong, data, 0, 0);
-    prefetch(true);
+	u32 data = (i32)(i8)(opcode & 0xFF);
+	reg_d[regPos] = data;
+	setFlags(flag_logical, SizeLong, data, 0, 0);
+	prefetch(true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_WRITE, 3);
+	ins.setWrite(REG_D, (1 << regPos));
+	pipe.advanceToAdd(ins);
 }
 
 template<u8 size> void Core_68k::op_subi(u16 opcode) {
@@ -1106,18 +1120,35 @@ template<bool _longSize> void Core_68k::op_ext(u16 opcode) {
     prefetch(true);
 }
 
+/**
+ * @notes: 
+ *   Pipeline Behavior -- FLUSH, Since this is a stack frame push, the execution
+ *   context will change after this instruction has finished. 
+ *
+ *   Cycles:
+ *     Prefetch: 3
+ *     Execute : 7
+ */
 void Core_68k::op_link(u16 opcode) {
 	u8 regPos = opcode & 7;
-    i32 val = (i32)(i16)reg_irc;
-    readExtensionWord();
-    u32 _decSP = reg_a[7] - 4;
-    u32 data = regPos == 7 ? _decSP : reg_a[regPos];
-    writeLong(_decSP, data);
+	i32 val = (i32)(i16)reg_irc;
+	readExtensionWord();
+	u32 _decSP = reg_a[7] - 4;
+	u32 data = regPos == 7 ? _decSP : reg_a[regPos];
+	writeLong(_decSP, data);
 
-    reg_a[7] = _decSP;
+	reg_a[7] = _decSP;
 	reg_a[regPos] = reg_a[7];
-    reg_a[7] += val;
-    prefetch(true);
+	reg_a[7] += val;
+	prefetch(true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_EXECUTE, 7);
+	ins.setWrite(REG_A, (1 << 7) | (1 << regPos));
+	ins.flushes = true;
+	pipe.advanceToAdd(ins);
 }
 
 template<bool dr> void Core_68k::op_moveusp(u16 opcode) {

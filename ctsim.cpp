@@ -58,10 +58,7 @@ int main(int argc, char** argv)
 	
 	Step68k step68k;
 	step68k.setObjectFile(OPTS.opt_insfile);
-	uint16_t word;
-	step68k.readWord(word);
-	cout << "Read: " << word << endl;
-	
+	step68k.runSim();
 	return 0;
 }
 

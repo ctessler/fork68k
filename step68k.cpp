@@ -7,6 +7,9 @@ Step68k::Step68k()
     testCounter = 0;
 }
 
+void Step68k::logInstruction(u16 word, bool isNext) {
+	cout << "Logging: 0x" << std::hex << word << " is next: " << isNext << endl;
+}
 
 void Step68k::setObjectFile(string file) {
 	insFile.open(file, ios::in | ios::binary);		
@@ -18,20 +21,37 @@ bool Step68k::readWord(uint16_t &word) {
 	 	return false;
 	}
 	/* Streams are worthless */
-	uint8_t high, low;
-	while (insFile >> high >> low) {
+	char cWord[2];
+	
+	while (insFile.read(cWord, 2)) {
+		uint8_t low = cWord[1];
+		uint8_t high = cWord[0];
 		word = low | (high << 8);
 		if (debug) {
-			cout << "Read low: " << low << " high: " << high << endl;
-			cout << "Converted to word: " << std::hex << word << endl;
+			cout << "Read low: 0x" << std::hex << low
+			     << " high: 0x" << std::hex << high;
+			cout << " Converted to word: 0x" << std::hex << word << endl;
 		}
+		cWord[0] = '\0';
+		cWord[1] = '\0';		
 		return true;
 	}
 	return false;
 }
 
 void Step68k::runSim() {
-	
+	setUp();
+	uint16_t word;
+	while (readWord(word)) {
+		addWord(word);
+	}
+	power();
+
+	cout << "Test" << endl;
+	while(getPC() != 0) {
+		process();
+	}
+
 }
 
 

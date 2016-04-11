@@ -51,7 +51,7 @@ class Step68k : public Core_68k {
 		memoryblock.write(adrCounter++, _word >> 8);
 		memoryblock.write(adrCounter++, _word & 0xff);
 	}
-
+	void logInstruction(u16 word, bool isNext);
  public:
 	Step68k();
 	void setObjectFile(string file);

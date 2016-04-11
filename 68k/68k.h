@@ -6,10 +6,12 @@
 #define CORE_68k_h
 
 #include <dataTypes.h>
+#include "pipeline.h"
 
 class Core_68k {
 
 public:
+    pipeline pipe; 
     Core_68k() { build_optable(); }
 
     enum Interrupt { USER_VECTOR/*Amiga*/, AUTO_VECTOR/*Genesis*/, SPURIOUS, UNINITIALIZED };
@@ -114,6 +116,10 @@ protected:
     void setCCR(u8 val) {
         reg_s.l = val;
     }
+    u32 getPC() {
+        return reg_pc;
+    }
+      
 
 private:
     #include "regs.h"
