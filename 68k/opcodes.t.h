@@ -182,14 +182,31 @@ template<bool dynamic> void Core_68k::op_btst(u16 opcode) {
 }
 
 //single operand instructions
+/**
+ * Calculate EFfective Address Worst Case : 24 cycles
+ *
+ * FETCH - 3 
+ * DECODE - 25
+ * EXECUTE - 4
+ * WRITE - 1
+ */
 template<u8 size> void Core_68k::op_clr(u16 opcode) {
 	LoadEA(size, opcode & 0x3F);
 	reg_s.z = 1;
 	reg_s.n = reg_s.v = reg_s.c = 0;
 
-    prefetch(isRegisterMode());
-    if (adm == DR_DIRECT && size == SizeLong) sync(2);
-    writeEA(size, 0, true);
+	prefetch(isRegisterMode());
+	if (adm == DR_DIRECT && size == SizeLong) sync(2);
+	writeEA(size, 0, true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 25);
+	ins.setCycles(PS_EXECUTE, 4);
+	ins.setCycles(PS_WRITE, 1);
+	pipe.advanceToAdd(ins);
+	
 }
 
 void Core_68k::op_nbcd(u16 opcode) {
@@ -270,23 +287,41 @@ template<u8 size> void Core_68k::op_tst(u16 opcode) {
 }
 
 /* Standard Instructions */
+
+/**
+ * ADD including ADDL
+ *
+ * PREFETCH - 3
+ * DECODE - 25
+ * EXECUTE - 2
+ * WRITE - 0
+ */
 template<u8 size, bool writeEa> void Core_68k::op_add(u16 opcode) {
 	u8 dregPos = (opcode >> 9) & 7;
 	u32 data = LoadEA(size, opcode & 0x3F);
-    u64 result = u64(maskVal_(reg_d[dregPos], size)) + u64(data);
+	u64 result = u64(maskVal_(reg_d[dregPos], size)) + u64(data);
 
-    setFlags(flag_add, size, result, data, reg_d[dregPos]);
+	setFlags(flag_add, size, result, data, reg_d[dregPos]);
 
-    prefetch(!writeEa);
+	prefetch(!writeEa);
 
-    if ( !writeEa ) {
-        eaReg = &reg_d[dregPos];
-        if (size == SizeLong) {
-            sync(2);
-            if ( !isMemoryOperand() ) sync(2);
-        }
-    }
-    writeEA(size, result, true);
+	if ( !writeEa ) {
+		eaReg = &reg_d[dregPos];
+		if (size == SizeLong) {
+			sync(2);
+			if ( !isMemoryOperand() ) sync(2);
+		}
+	}
+	writeEA(size, result, true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setRead(REG_D, (1 << dregPos));
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 25);
+	ins.setCycles(PS_EXECUTE, 2);
+	ins.setCycles(PS_WRITE, 0);
+	pipe.advanceToAdd(ins);
 }
 
 template<u8 size> void Core_68k::op_adda(u16 opcode) {
@@ -327,15 +362,29 @@ template<u8 size, bool writeEa> void Core_68k::op_and(u16 opcode) {
     writeEA(size, data, true);
 }
 
+/**
+ * FETCH - 3
+ * DECODE - 27
+ * EXECUTE - 16
+ * WRITE - 0
+ */
 template<u8 size> void Core_68k::op_cmp(u16 opcode) {
 	u8 dregPos = (opcode >> 9) & 7;
 	u32 data = LoadEA(size, opcode & 0x3F);
-    u64 result = u64(maskVal_(reg_d[dregPos], size)) - u64(data);
+	u64 result = u64(maskVal_(reg_d[dregPos], size)) - u64(data);
 
-    setFlags(flag_cmp, size, result, data, reg_d[dregPos]);
+	setFlags(flag_cmp, size, result, data, reg_d[dregPos]);
 
-    prefetch(true);
-    if (size == SizeLong) sync(2);
+	prefetch(true);
+	if (size == SizeLong) sync(2);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 27);
+	ins.setCycles(PS_EXECUTE, 16);
+	ins.setCycles(PS_WRITE, 0);
+	pipe.advanceToAdd(ins);
 }
 
 template<u8 size> void Core_68k::op_cmpa(u16 opcode) {
@@ -510,22 +559,39 @@ void Core_68k::op_divs(u16 opcode) {
     writeEA(SizeLong, result & 0xFFFF | remainder << 16);
 }
 
+/**
+ * MOVE, includes MOVEL
+ *
+ * PREFETCH - 3
+ * DECODE - 7
+ * EXECUTE - 25
+ * WRITE - 1
+ */
 template<u8 size> void Core_68k::op_move(u16 opcode) {
-    u8 destEA = (((opcode >> 6) & 7) << 3) | ((opcode >> 9) & 7);
+	u8 destEA = (((opcode >> 6) & 7) << 3) | ((opcode >> 9) & 7);
 	u32 data = LoadEA(size, opcode & 0x3F);
-    bool isClass2 = isMemoryOperand() && destEA == ABS_LONG;
+	bool isClass2 = isMemoryOperand() && destEA == ABS_LONG;
 
-    LoadEA(size, destEA, true, !isClass2, true);
+	LoadEA(size, destEA, true, !isClass2, true);
 	setFlags(flag_logical, size, data, 0, 0);
-    if (adm == AR_INDIRECT_DEC) { //dest adm
-        prefetch();
-    }
-    writeEA(size, data, adm == AR_INDIRECT_DEC);
-    updateRegAForIndirectAddressing(size, (opcode >> 9) & 7 );
+	if (adm == AR_INDIRECT_DEC) { //dest adm
+		prefetch();
+	}
+	writeEA(size, data, adm == AR_INDIRECT_DEC);
+	updateRegAForIndirectAddressing(size, (opcode >> 9) & 7 );
 
-    if (adm != AR_INDIRECT_DEC) { //dest adm
-        isClass2 ? fullprefetch(true) : prefetch(true);
-    }
+	if (adm != AR_INDIRECT_DEC) { //dest adm
+		isClass2 ? fullprefetch(true) : prefetch(true);
+	}
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 7);
+	ins.setCycles(PS_EXECUTE, 25);
+	ins.setCycles(PS_WRITE, 1);
+	pipe.advanceToAdd(ins);
+
 }
 
 template<u8 size> void Core_68k::op_movea(u16 opcode) {
@@ -548,20 +614,35 @@ template<u8 size> void Core_68k::op_addi(u16 opcode) {
     writeEA(size, result, true);
 }
 
+/**
+ *
+ * FETCH - 3
+ * DECODE - 1
+ * EXECUTE - 2
+ * WRITE - 0
+ */
 template<u8 size> void Core_68k::op_addq(u16 opcode) {
 	u8 immediate = (opcode >> 9) & 7;
 	if (immediate == 0) immediate = 8;
 
 	u32 data = LoadEA(size, opcode & 0x3F);
-    u64 result = u64(immediate) + u64(data);
+	u64 result = u64(immediate) + u64(data);
 
 	if (adm != AR_DIRECT) setFlags(flag_add, size, result, immediate, data);
 
-    prefetch(isRegisterMode());
-    if (adm == AR_DIRECT) sync(4);
-    else if (size == SizeLong && adm == DR_DIRECT) sync(4);
+	prefetch(isRegisterMode());
+	if (adm == AR_DIRECT) sync(4);
+	else if (size == SizeLong && adm == DR_DIRECT) sync(4);
 
-    writeEA(size, result, true);
+	writeEA(size, result, true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 1);
+	ins.setCycles(PS_EXECUTE, 2);
+	ins.setCycles(PS_WRITE, 0);
+	pipe.advanceToAdd(ins);
 }
 
 template<u8 size> void Core_68k::op_subq(u16 opcode) {
@@ -847,6 +928,8 @@ template<u8 size, bool memTomem> void Core_68k::op_addx(u16 opcode) {
     }
 }
 
+#include <iostream>
+using namespace std;
 template<u8 size> void Core_68k::op_cmpm(u16 opcode) {
 	u8 RegAy = opcode & 7;
 	u8 RegAx = (opcode >> 9) & 7;
@@ -1203,10 +1286,25 @@ void Core_68k::op_rtr(u16 opcode) {
     fullprefetch(true);
 }
 
+/**
+ *
+ * FETCH - 3
+ * DECODE - 3
+ * EXECUTE - 9
+ * WRITE - 0
+ */
 void Core_68k::op_rts(u16 opcode) {
 	reg_pc = readLong(reg_a[7]);
 	reg_a[7] += 4;
-    fullprefetch(true);
+	fullprefetch(true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 3);
+	ins.setCycles(PS_EXECUTE, 9);
+	ins.setRead(REG_A, (1 << 7 ));
+	pipe.advanceToAdd(ins);
 }
 
 void Core_68k::op_stop(u16 opcode) {
@@ -1243,14 +1341,37 @@ void Core_68k::op_trapv(u16 opcode) {
     }
 }
 
+
+/**
+ * 
+ * -- FLUSHES -- 
+ * FETCH - 3
+ * DECODE - 2
+ * EXECUTE - 5
+ * WRITE 0 
+ */
 void Core_68k::op_unlk(u16 opcode) {
 	u8 regPos = opcode & 7;
 	reg_a[7] = reg_a[regPos];
 	reg_a[regPos] = LoadEA(SizeLong, (2 << 3) | 7);
-    if (regPos != 7) reg_a[7] += 4;
-    prefetch(true);
+	if (regPos != 7) reg_a[7] += 4;
+	prefetch(true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 2);
+	ins.setCycles(PS_EXECUTE, 7);
+	ins.flushes = true;
+	pipe.advanceToAdd(ins);
 }
 
+/**
+ * FETCH - 3
+ * DECODE - 5
+ * EXECUTE - 13
+ * WRITE - 4
+ */
 template<u8 opmode> void Core_68k::op_movep(u16 opcode) {
 	u32 data;
 	u8 regPosA = opcode & 7;
@@ -1286,4 +1407,13 @@ template<u8 opmode> void Core_68k::op_movep(u16 opcode) {
 			break;
 	}
     prefetch(true);
+
+	instruction ins;
+	ins.setOpCode(opcode);
+	ins.setCycles(PS_FETCH, 3);
+	ins.setCycles(PS_DECODE, 5);
+	ins.setCycles(PS_EXECUTE, 13);
+	ins.setCycles(PS_WRITE, 4);	
+	pipe.advanceToAdd(ins);
+    
 }

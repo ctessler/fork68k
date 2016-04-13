@@ -6,36 +6,62 @@
 #include "pipeline.h"
 #include <cstdlib>
 #include <iostream>
+#include <iomanip>
 using namespace std;
 
+static void reportHeader() {
+	static bool has_header = false;
+	if (has_header) {
+		return;
+	}
+	has_header = true;
+  	cout << left << setw(8) << "PC"
+	     << setw(30) << "Pipeline"
+	     << setw(20) << "Pipeline-less" << endl;
+	cout << setw(8) << " "
+	     << setw(20) << "(Cycles/Remaining) = Total"
+	     << setw(20) << "" << endl;
+
+}
+void Core_68k::statusReport() {
+	unsigned long int cur, remain, pless;
+	cur = pipe.getCycleCount();
+	remain = pipe.remaining();
+	pless = pipe.getPipelessCount();
+
+	reportHeader();
+	cout << "0x" << fixed << setw(6) << left << hex << reg_pc
+	     << "(" << setw(7) << std::dec << cur << "/"
+	     << setw(8) << right << remain << ") = "
+	     << setw(8) << left << (cur + remain)
+	     << setw(12) << right << pless << endl;
+	
+}
 
 void Core_68k::process() { //execute next opcode
-	cout << "In process()" << endl;
-  if ( doubleFault ) {
-        cpuHalted();
-        sync(4);
-        return; //cpu can recover from reset only
-    }
+	if ( doubleFault ) {
+		cpuHalted();
+		sync(4);
+		return; //cpu can recover from reset only
+	}
 
-    try {
-        group1exceptions();
-        if (stop) {
-            sampleIrq();
-            sync(2);
-            return;
-        }
-        trace = reg_s.trace;
-        incrementPc();
-	cout << "Test" << endl;
-        logInstruction(reg_ird, true);
+	try {
+		group1exceptions();
+		if (stop) {
+			sampleIrq();
+			sync(2);
+			return;
+		}
+		trace = reg_s.trace;
+		incrementPc();
+		logInstruction(reg_ird, true);
 
-        (this->*opcodes[ reg_ird ])(reg_ird);
-	cout << "Current PC: " << reg_pc << " pipelined cycles: " << std::dec
-	     << pipe.getCycleCount() << " to clear: " << pipe.remaining() << endl;
-    } catch(CpuException) {
-        //bus or address error, leave opcode or exception handler
-        status_code.reset();
-    }
+		(this->*opcodes[ reg_ird ])(reg_ird);
+		statusReport();
+	} catch(CpuException) {
+		//bus or address error, leave opcode or exception handler
+		status_code.reset();
+	}
 }
 
 void Core_68k::power() {

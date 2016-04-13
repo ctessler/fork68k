@@ -82,9 +82,12 @@ unsigned int pipeline::advance() {
 		}
 		PIPE_STAGE s = (PIPE_STAGE) i;
 		uint16_t t = pipe[i].getCycles(s);
-		if (t < cycles) {
+		if (t > 0 && t < cycles) {
 			cycles = t;
 		}
+	}
+	if (cycles == UINT16_MAX) {
+		cycles = 0;
 	}
 	for (int i = 0; i < PS_STAGE_MAX; i++) {
 		pipe[i].execCycles((PIPE_STAGE)i, cycles);
@@ -144,6 +147,11 @@ bool pipeline::addInstruction(instruction &a) {
 			advance();
 		}
 	}
+
+	for (int i = 0; i < PS_STAGE_MAX; i++) {
+		raw_cycles += a.getCycles((PIPE_STAGE) i);
+	}
+	
 	return true;
 }
 

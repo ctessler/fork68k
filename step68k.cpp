@@ -8,7 +8,10 @@ Step68k::Step68k()
 }
 
 void Step68k::logInstruction(u16 word, bool isNext) {
-	cout << "Logging: 0x" << std::hex << word << " is next: " << isNext << endl;
+	if (debug) {
+		cout << "Logging: 0x" << std::hex << word << " is next: "
+		     << isNext << endl;
+	}
 }
 
 void Step68k::setObjectFile(string file) {
@@ -47,8 +50,7 @@ void Step68k::runSim() {
 	}
 	power();
 
-	cout << "Test" << endl;
-	while(getPC() != 0) {
+	while(getPC() != 0 && getOP() != 0) {
 		process();
 	}
 

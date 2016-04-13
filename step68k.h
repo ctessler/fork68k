@@ -12,7 +12,7 @@ class Results;
 class Step68k : public Core_68k {
  private:
 	ifstream insFile;
-	bool debug = true;
+	bool debug = false;
  protected:
 	MemoryBlock memoryblock;
 

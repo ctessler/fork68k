@@ -111,6 +111,7 @@ public:
 			write[i] = 0;
 		}
 		unset = true;
+		flushes = false;
 	}
 
 	bool isSet() {
@@ -143,6 +144,7 @@ public:
 	 * everything in the pipeline.
 	 */
 	unsigned long int getCycleCount() { return p_cycles; }
+	unsigned long int getPipelessCount() { return raw_cycles; }	
 
 	/**
 	 * Advances the pipeline by the smallest amount, returning the
@@ -156,6 +158,7 @@ public:
 protected:
 	instruction pipe[PS_STAGE_MAX];
 	unsigned long int p_cycles = 0;
+	unsigned long int raw_cycles = 0;
 };
 
 

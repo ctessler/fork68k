@@ -119,7 +119,9 @@ protected:
     u32 getPC() {
         return reg_pc;
     }
-      
+    u32 getOP() {
+        return reg_ird;
+    }
 
 private:
     #include "regs.h"
@@ -142,6 +144,8 @@ private:
     public:
         CpuException() {}
     };
+
+    void statusReport();
 
     void (Core_68k::*opcodes[0x10000])(u16 opcode);
 
